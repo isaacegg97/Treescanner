@@ -10,6 +10,8 @@ pub struct StructuralHint {
     pub kind: HintKind,
     pub label: String,
     pub offset: Option<usize>,
+    pub severity: Severity,
+    pub confidence: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -18,6 +20,14 @@ pub enum HintKind {
     BoundaryCheck,
     ArrayIndex,
     Vulnerability,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum Severity {
+    Low,
+    Medium,
+    High,
+    Critical,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

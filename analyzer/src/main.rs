@@ -2,10 +2,13 @@
 
 use anyhow::Result;
 use clap::Parser;
-use common::{HintKind, StructuralHint, StructuralMap};
+mod offset_inference;
+
+use common::{HintKind, Severity, StructuralHint, StructuralMap};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use offset_inference::{infer_offset_for_hint, OffsetContext};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tera::{Context, Tera};
@@ -110,6 +113,20 @@ fn is_input_like(name: &str) -> bool {
         || n.contains("packet")
         || n.contains("msg")
         || n.contains("payload")
+}
+
+
+fn parse_severity(input: &str) -> Severity {
+    match input.to_lowercase().as_str() {
+        "critical" => Severity::Critical,
+        "high" => Severity::High,
+        "medium" => Severity::Medium,
+        _ => Severity::Low,
+    }
+}
+
+fn default_confidence() -> f32 {
+    0.6
 }
 
 fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHint>> {
@@ -224,8 +241,7 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
         }
 
         if let (Some(var), Some(node)) = (lhs, rhs_node) {
-            if let Some(origin) = var_origin.get(&var) {
-                if origin == "input" {
+            if is_input_like(&var) || var_origin.contains_key(&var) {
                     push_hint_limited(
                         &mut hints,
                         StructuralHint {
@@ -235,10 +251,11 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
                         kind: HintKind::LengthField,
                         label: format!("Input-derived length field: {}", var),
                         offset: None,
+                        severity: Severity::Medium,
+                        confidence: default_confidence(),
                         },
                         limits.max_hints_per_file,
                     );
-                }
             }
         }
     }
@@ -274,6 +291,8 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
                         kind: HintKind::BoundaryCheck,
                         label: "Input-influenced boundary check".to_string(),
                         offset: None,
+                        severity: Severity::Medium,
+                        confidence: default_confidence(),
                         },
                         limits.max_hints_per_file,
                     );
@@ -313,6 +332,8 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
                         kind: HintKind::ArrayIndex,
                         label: "Input-influenced array/table index".to_string(),
                         offset: None,
+                        severity: Severity::Medium,
+                        confidence: default_confidence(),
                         },
                         limits.max_hints_per_file,
                     );
@@ -352,13 +373,15 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
         if let (Some(f), Some(n)) = (func, args) {
             if risky.contains(&f.as_str()) {
                 let text = n.utf8_text(source.as_bytes())?;
+                let lower_f = f.to_lowercase();
 
                 let has_input_shape = text.contains('[')
                     || text.contains("len")
-                    || text.contains("size");
+                    || text.contains("size")
+                    || lower_f == "malloc"
+                    || lower_f == "realloc";
 
                 if has_input_shape {
-                    let lower_f = f.to_lowercase();
                     let label = if lower_f == "memcpy" || lower_f == "memmove" || lower_f == "strcpy" || lower_f == "strcat" {
                         format!("Unchecked copy pattern in {}", f)
                     } else {
@@ -373,6 +396,8 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
                         kind: HintKind::Vulnerability,
                         label,
                         offset: None,
+                        severity: Severity::High,
+                        confidence: default_confidence(),
                         },
                         limits.max_hints_per_file,
                     );
@@ -417,6 +442,8 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
                     kind: HintKind::Vulnerability,
                     label: "Truncating cast from potentially larger value".to_string(),
                     offset: None,
+                    severity: Severity::High,
+                    confidence: default_confidence(),
                     },
                     limits.max_hints_per_file,
                 );
@@ -448,9 +475,21 @@ fn process_file(path: &Path, limits: AnalyzerLimits) -> Result<Vec<StructuralHin
                     kind: HintKind::Vulnerability,
                     label: "Early exit may bypass validation or cleanup".to_string(),
                     offset: None,
+                    severity: Severity::Medium,
+                    confidence: default_confidence(),
                     },
                     limits.max_hints_per_file,
                 );
+            }
+        }
+    }
+
+    let offset_context = OffsetContext::new(&source, &tree)?;
+    for hint in hints.iter_mut() {
+        if hint.offset.is_none() {
+            hint.offset = infer_offset_for_hint(hint, &source, &tree, &offset_context);
+            if hint.offset.is_some() {
+                hint.confidence = 0.9;
             }
         }
     }
@@ -613,6 +652,34 @@ mod tests {
         assert!(labels
             .iter()
             .any(|l| l.contains("Early exit may bypass validation")));
+    }
+
+    #[test]
+    fn infers_offset_for_direct_subscript() {
+        let src = r#"
+            int f(unsigned char *data, size_t len) {
+                size_t sz = 0;
+                sz = data[0];
+                return sz;
+            }
+        "#;
+        let path = write_temp_c_file(src);
+        let hints = process_file(
+            &path,
+            AnalyzerLimits {
+                max_file_size_bytes: 1024 * 1024,
+                max_hints_per_file: 10_000,
+            },
+        )
+        .expect("temp source should parse");
+        let _ = fs::remove_file(path);
+
+        let len_hints: Vec<_> = hints
+            .iter()
+            .filter(|h| matches!(h.kind, HintKind::LengthField))
+            .collect();
+        assert!(!len_hints.is_empty());
+        assert_eq!(len_hints[0].offset, Some(0));
     }
 
     #[test]
