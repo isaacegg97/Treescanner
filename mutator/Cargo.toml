@@ -1,0 +1,13 @@
+[package]
+name = "mutator"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+common = { version = "0.1.0", path = "../common" }
+libloading = "0.9.0"
+rand = "0.8"
+serde_json = "1.0.149"

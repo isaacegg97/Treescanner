@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run workspace tests
+        run: cargo test --workspace
+
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run audit script
+        run: ./scripts/dependency_audit.sh
+
+  hardened-smoke:
+    name: Hardened Analyzer Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Ensure scripts executable
+        run: chmod +x ./scripts/run_analyzer_sandbox.sh ./scripts/dependency_audit.sh
+
+      - name: Run hardened analyzer script
+        run: |
+          ./scripts/run_analyzer_sandbox.sh \
+            --input test_target.c \
+            --output /tmp/ts_hardened_hints.json \
+            --global-hints global_hints.json \
+            --max-files 10 \
+            --max-file-size-bytes 1048576 \
+            --max-hints-per-file 100

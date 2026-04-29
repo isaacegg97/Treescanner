@@ -1,0 +1,285 @@
+{
+  "version": "2.0",
+  "description": "Global structural and security anti-pattern hints for fuzzing guidance, mutation prioritization, and triage.",
+  "schema": {
+    "required_fields": [
+      "id",
+      "kind",
+      "category",
+      "severity",
+      "label",
+      "relations",
+      "signals",
+      "mutations"
+    ],
+    "severity_scale": [
+      "low",
+      "medium",
+      "high",
+      "critical"
+    ]
+  },
+  "hints": [
+    {
+      "id": "core.length_field",
+      "kind": "LengthField",
+      "category": "memory_safety",
+      "severity": "high",
+      "confidence": 0.0,
+      "label": "Input-derived length controls allocation or copy size",
+      "relations": [
+        "controls_allocation",
+        "controls_copy_size"
+      ],
+      "signals": [
+        "assignment_from_subscript",
+        "used_in_malloc_or_memcpy_arg"
+      ],
+      "mutations": [
+        "zero",
+        "max_value",
+        "off_by_one",
+        "size_mismatch",
+        "integer_wrap_boundary"
+      ]
+    },
+    {
+      "id": "core.boundary_check",
+      "kind": "BoundaryCheck",
+      "category": "control_flow",
+      "severity": "medium",
+      "confidence": 0.0,
+      "label": "Input participates in branch threshold checks",
+      "relations": [
+        "controls_branch",
+        "controls_state_transition"
+      ],
+      "signals": [
+        "if_with_input_comparison",
+        "threshold_literal_near_input"
+      ],
+      "mutations": [
+        "just_below_threshold",
+        "just_above_threshold",
+        "boundary_sweep",
+        "flip_bit"
+      ]
+    },
+    {
+      "id": "core.table_index",
+      "kind": "TableIndex",
+      "category": "memory_safety",
+      "severity": "high",
+      "confidence": 0.0,
+      "label": "Input used as array, table, or dispatch index",
+      "relations": [
+        "controls_dispatch",
+        "controls_memory_access"
+      ],
+      "signals": [
+        "subscript_with_input_operand",
+        "switch_on_input"
+      ],
+      "mutations": [
+        "zero_index",
+        "max_index",
+        "out_of_range",
+        "negative_like",
+        "overflow_index"
+      ]
+    },
+    {
+      "id": "core.loop_bound",
+      "kind": "LoopBound",
+      "category": "dos",
+      "severity": "medium",
+      "confidence": 0.0,
+      "label": "Input-derived loop iteration bound",
+      "relations": [
+        "controls_iteration_count",
+        "controls_cpu_cost"
+      ],
+      "signals": [
+        "for_or_while_bound_by_input",
+        "loop_counter_compares_input"
+      ],
+      "mutations": [
+        "zero",
+        "small_value",
+        "large_value",
+        "overflow_boundary",
+        "near_timeout_value"
+      ]
+    },
+    {
+      "id": "ap.unchecked_copy",
+      "kind": "UncheckedCopy",
+      "category": "memory_safety",
+      "severity": "critical",
+      "confidence": 0.0,
+      "label": "Copy operation occurs without visible destination bound validation",
+      "relations": [
+        "causes_buffer_overflow",
+        "causes_memory_corruption"
+      ],
+      "signals": [
+        "memcpy_or_memmove_without_guard",
+        "size_operand_tainted"
+      ],
+      "mutations": [
+        "expand_copy_size",
+        "mismatch_declared_and_actual_size",
+        "destination_truncate"
+      ]
+    },
+    {
+      "id": "ap.truncating_cast",
+      "kind": "TruncatingCast",
+      "category": "integer_safety",
+      "severity": "high",
+      "confidence": 0.0,
+      "label": "Input or derived size cast to narrower integer type",
+      "relations": [
+        "causes_size_truncation",
+        "bypasses_bounds_logic"
+      ],
+      "signals": [
+        "cast_from_wider_to_narrower_integer",
+        "cast_used_in_allocation_or_copy"
+      ],
+      "mutations": [
+        "high_bit_set",
+        "width_boundary_values",
+        "sign_flip_values"
+      ]
+    },
+    {
+      "id": "ap.signed_unsigned_mix",
+      "kind": "SignedUnsignedMix",
+      "category": "integer_safety",
+      "severity": "high",
+      "confidence": 0.0,
+      "label": "Signed and unsigned arithmetic mixed in size or bounds logic",
+      "relations": [
+        "causes_underflow_or_overflow",
+        "causes_unexpected_wrap"
+      ],
+      "signals": [
+        "comparison_between_signed_and_unsigned",
+        "cast_then_arithmetic"
+      ],
+      "mutations": [
+        "negative_like_values",
+        "max_unsigned_values",
+        "underflow_boundary"
+      ]
+    },
+    {
+      "id": "ap.state_desync",
+      "kind": "StateDesync",
+      "category": "parser_logic",
+      "severity": "medium",
+      "confidence": 0.0,
+      "label": "Parser state progression can desynchronize from consumed bytes",
+      "relations": [
+        "causes_parser_desync",
+        "causes_confused_deputy_behavior"
+      ],
+      "signals": [
+        "state_transition_without_consumption",
+        "consumption_without_state_update"
+      ],
+      "mutations": [
+        "skip_state",
+        "repeat_state",
+        "shift_alignment",
+        "partial_payload"
+      ]
+    },
+    {
+      "id": "ap.early_exit_guard",
+      "kind": "EarlyExit",
+      "category": "validation_bypass",
+      "severity": "high",
+      "confidence": 0.0,
+      "label": "Early return path can bypass expected validation or initialization",
+      "relations": [
+        "bypasses_validation",
+        "leaves_partial_state"
+      ],
+      "signals": [
+        "guard_clause_before_validation",
+        "error_path_missing_cleanup_or_reset"
+      ],
+      "mutations": [
+        "force_exit",
+        "avoid_exit_condition",
+        "invert_condition"
+      ]
+    },
+    {
+      "id": "ap.dangerous_allocation",
+      "kind": "DangerousAllocation",
+      "category": "memory_safety",
+      "severity": "critical",
+      "confidence": 0.0,
+      "label": "Allocation size is directly or indirectly tainted by untrusted input",
+      "relations": [
+        "causes_heap_exhaustion",
+        "causes_allocation_overflow"
+      ],
+      "signals": [
+        "malloc_or_realloc_with_tainted_size",
+        "allocation_size_from_multiplication"
+      ],
+      "mutations": [
+        "max_allocation",
+        "multiplication_overflow_operands",
+        "zero_then_large_flip"
+      ]
+    },
+    {
+      "id": "ap.overlapping_alias_reuse",
+      "kind": "AliasReuse",
+      "category": "parser_logic",
+      "severity": "medium",
+      "confidence": 0.0,
+      "label": "Same byte region reinterpreted with conflicting semantics",
+      "relations": [
+        "causes_conflicting_parse",
+        "causes_unstable_control_flow"
+      ],
+      "signals": [
+        "multiple_reads_same_offset_different_type",
+        "reinterpret_cast_like_pattern"
+      ],
+      "mutations": [
+        "reinterpret_region",
+        "overlap_shift",
+        "byte_reassignment"
+      ]
+    },
+    {
+      "id": "ap.bitfield_authz_control",
+      "kind": "BitfieldControl",
+      "category": "authorization_logic",
+      "severity": "high",
+      "confidence": 0.0,
+      "label": "Bit flags derived from input influence privileged behavior",
+      "relations": [
+        "controls_feature_flag",
+        "controls_authorization_path"
+      ],
+      "signals": [
+        "bitmask_check_controls_sensitive_branch",
+        "missing_mask_sanitization"
+      ],
+      "mutations": [
+        "flip_bit",
+        "mask_full",
+        "mask_zero",
+        "toggle_high_bits"
+      ]
+    }
+  ]
+}

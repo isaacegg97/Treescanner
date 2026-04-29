@@ -1,0 +1,28 @@
+{
+  "hints": [
+    {
+      "file": "test_target.c",
+      "line": 8,
+      "column": 26,
+      "kind": "LengthField",
+      "label": "Length field source: payload_size",
+      "offset": 0
+    },
+    {
+      "file": "test_target.c",
+      "line": 16,
+      "column": 19,
+      "kind": "Vulnerability",
+      "label": "Potentially tainted malloc call",
+      "offset": null
+    },
+    {
+      "file": "test_target.c",
+      "line": 17,
+      "column": 4,
+      "kind": "Vulnerability",
+      "label": "Potentially tainted memcpy call",
+      "offset": null
+    }
+  ]
+}
