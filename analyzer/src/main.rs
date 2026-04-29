@@ -14,10 +14,10 @@ use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(value_name = "TARGET")]
     input: PathBuf,
 
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "hints.json")]
     output: PathBuf,
 
     #[arg(short, long)]

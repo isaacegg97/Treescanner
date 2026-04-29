@@ -64,7 +64,7 @@ jobs:
       - name: Run hardened analyzer script
         run: |
           ./scripts/run_analyzer_sandbox.sh \
-            --input test_target.c \
+            test_target.c \
             --output /tmp/ts_hardened_hints.json \
             --global-hints global_hints.json \
             --max-files 10 \

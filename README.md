@@ -95,4 +95,4 @@ TreeScanner links third-party parsing and fuzzing components, so the project now
 
 Example hardened run:
 
-`scripts/run_analyzer_sandbox.sh --input test_target.c --output hints.json --report report.html --global-hints global_hints.json --max-files 2000 --max-file-size-bytes 1048576 --max-hints-per-file 2000`
+`scripts/run_analyzer_sandbox.sh test_target.c --output hints.json --report report.html --global-hints global_hints.json --max-files 2000 --max-file-size-bytes 1048576 --max-hints-per-file 2000`

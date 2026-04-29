@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 --input <path> --output <hints.json> [--report <report.html>] [extra analyzer args]"
+  echo "Usage: $0 <target-path> [--output <hints.json>] [--report <report.html>] [extra analyzer args]"
   exit 1
 fi
 
