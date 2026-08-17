@@ -30,7 +30,11 @@ impl OffsetContext {
                 let name = query.capture_names()[c.index as usize];
                 match name {
                     "base" => {
-                        base = c.node.utf8_text(source.as_bytes()).ok().map(|s: &str| s.to_lowercase())
+                        base = c
+                            .node
+                            .utf8_text(source.as_bytes())
+                            .ok()
+                            .map(|s: &str| s.to_lowercase())
                     }
                     "idx" => {
                         idx = c
@@ -45,7 +49,10 @@ impl OffsetContext {
             }
 
             if let (Some(base_name), Some(index), Some(line)) = (base, idx, row) {
-                if base_name.contains("data") || base_name.contains("buf") || base_name.contains("input") {
+                if base_name.contains("data")
+                    || base_name.contains("buf")
+                    || base_name.contains("input")
+                {
                     direct_offsets.insert(line, index);
                 }
             }
@@ -59,6 +66,11 @@ impl OffsetContext {
     }
 }
 
-pub fn infer_offset_for_hint(hint: &StructuralHint, _source: &str, _tree: &Tree, ctx: &OffsetContext) -> Option<usize> {
+pub fn infer_offset_for_hint(
+    hint: &StructuralHint,
+    _source: &str,
+    _tree: &Tree,
+    ctx: &OffsetContext,
+) -> Option<usize> {
     ctx.infer_offset(hint)
 }

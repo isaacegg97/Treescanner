@@ -38,7 +38,7 @@ cargo build --release -p mutator
 ### 3. Analyze a Target
 Run the analyzer on your source file to generate a `hints.json` file and a visual report:
 ```bash
-./target/release/analyzer test_target.c -o hints.json --report report.html
+./target/release/analyzer test_target.c -o hints.json --report report.html --stats stats.json
 ```
 
 ### 4. Fuzz with AFL++
@@ -55,6 +55,8 @@ TreeScanner employs several heuristics to understand how data is used:
 * **Direct Subscripts:** Automatically identifies `data[x]` patterns to map specific offsets.
 * **Assignment Chains:** Traces how input data is passed through local variables to identify secondary offsets.
 * **Contextual Inference:** Heuristically determines potential field boundaries based on parameter usage in common C functions.
+* **Rule Provenance:** Each new hint includes a stable ID, rule ID, source snippet, and evidence strings so additional detection rules can be added and tracked consistently.
+* **Scan Telemetry:** The analyzer can emit machine-readable `--stats` JSON with file counts, per-kind/per-severity totals, top files by hint count, and offset inference coverage.
 
 ### Limitations
 * **Heuristic Nature:** Offset inference is "best effort" and may miss complex pointer arithmetic.

@@ -4,7 +4,8 @@ use std::ptr;
 
 // Emulate AFL++ types and signatures
 type MutatorInit = unsafe extern "C" fn(*mut c_void, u32) -> *mut c_void;
-type MutatorFuzz = unsafe extern "C" fn(*mut c_void, *mut u8, usize, *mut *mut u8, *mut u8, usize, usize) -> usize;
+type MutatorFuzz =
+    unsafe extern "C" fn(*mut c_void, *mut u8, usize, *mut *mut u8, *mut u8, usize, usize) -> usize;
 type MutatorDeinit = unsafe extern "C" fn(*mut c_void);
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -24,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let mut input = vec![10, 20, 30, 40];
         let mut out_buf: *mut u8 = ptr::null_mut();
-        
+
         println!("Initial input: {:?}", input);
 
         for i in 0..10 {
@@ -35,9 +36,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 &mut out_buf,
                 ptr::null_mut(),
                 0,
-                100
+                100,
             );
-            
+
             let mutated = std::slice::from_raw_parts(out_buf, new_size);
             println!("Mutation {}: {:?}", i, mutated);
         }
